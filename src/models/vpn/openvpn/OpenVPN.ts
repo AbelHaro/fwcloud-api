@@ -54,6 +54,80 @@ import { StringifyOptions } from 'querystring';
 import RequestData from '../../data/RequestData';
 import fwcError from '../../../utils/error_table';
 import ip from 'ip';
+import { OpenVPNToIPObjGroupExporter } from '../../../fwcloud-exporter/database-exporter/exporters/openvpn-to-ipobj-group.exporter';
+import { PolicyRuleToIPObjData } from '../../policy/PolicyRuleToIPObj';
+import { PolicyRuleToOpenVPNPrefix } from '../../policy/PolicyRuleToOpenVPNPrefix';
+import f from 'session-file-store';
+
+interface SearchOpenvpnUsage {
+  result: boolean;
+  restrictions: {
+    OpenvpnInRule?: Array<
+      PolicyRuleToOpenVPN & {
+        firewall_id: number;
+        firewall_name: string;
+        obj_id: number;
+        obj_name: string;
+        rule_id: number;
+        rule_type: number;
+        obj_type_id: number;
+        rule_type_name: string;
+        rule_position_id: number;
+        rule_position_name: string;
+        cluster_id: number;
+        cluster_name: string;
+      }
+    >;
+    OpenvpnInGroup?: Array<
+      OpenVPNToIPObjGroupExporter & {
+        group_id: number;
+        group_name: string;
+        group_type: number;
+        obj_type_id: number;
+        obj_name: string;
+      }
+    >;
+    LastOpenvpnInPrefixInRule?: Array<{
+      rule_id: number;
+      prefix: string;
+      openvpn: number;
+      name: string;
+      rule_type: number;
+      obj_type_id: number;
+      obj_name: string;
+      rule_type_name: string;
+      rule_position_id: number;
+      rule_position_name: string;
+      firewall_id: number;
+      firewall_name: string;
+      cluster_id: number;
+      cluster_name: string;
+    }>;
+    LastOpenvpnInPrefixInGroup?: Array<{
+      prefix: string;
+      openvpn: number;
+      name: string;
+      group_id: number;
+      group_name: string;
+    }>;
+    OpenVPNInRoute?: Array<SearchRoute>;
+    OpenVPNInGroupInRoute?: Array<SearchRoute>;
+    OpenVPNInRoutingRule?: Array<SearchRoute>;
+    OpenVPNInGroupInRoutingRule?: Array<SearchRoute>;
+    OpenvpnInGroupInRule?: Array<PolicyRuleToIPObjData>;
+    OpenvpnInPrefixInRule?: Array<
+      PolicyRuleToOpenVPNPrefix & { firewall_id: number; firewall_name: string }
+    >;
+    OpenvpnInPrefixInGroupInRule?: Array<PolicyRuleToIPObjData>;
+  };
+}
+
+interface SearchRoute {
+  firewall_id: number;
+  firewall_name: string;
+  cluster_id: number;
+  cluster_name: string;
+}
 
 const tableName: string = 'openvpn';
 
@@ -283,18 +357,21 @@ export class OpenVPN extends Model {
   public static getCfg(req: RequestData): Promise<any> {
     return new Promise((resolve, reject) => {
       let sql = `select * from ${tableName} where id=${req.body.openvpn}`;
-      req.dbCon.query(sql, (error: Error, result: Array<any>) => {
-        if (error) return reject(error);
-
-        const data = result[0];
-        sql = 'select * from openvpn_opt where openvpn=' + req.body.openvpn;
-        req.dbCon.query(sql, (error: Error, result: Array<OpenVPNOption>) => {
+      req.dbCon.query(
+        sql,
+        (error: Error, result: Array<OpenVPN & { options: Array<OpenVPNOption> }>) => {
           if (error) return reject(error);
 
-          data.options = result;
-          resolve(data);
-        });
-      });
+          const data = result[0];
+          sql = 'select * from openvpn_opt where openvpn=' + req.body.openvpn;
+          req.dbCon.query(sql, (error: Error, result: Array<OpenVPNOption>) => {
+            if (error) return reject(error);
+
+            data.options = result;
+            resolve(data);
+          });
+        },
+      );
     });
   }
 
@@ -669,13 +746,24 @@ export class OpenVPN extends Model {
     fwcloud: number,
     openvpn: number,
     extendedSearch?: boolean,
-  ) {
+  ): Promise<SearchOpenvpnUsage> {
     return new Promise(async (resolve, reject) => {
       try {
-        const search: any = {};
-        search.result = false;
-        search.restrictions = {};
-
+        const search: SearchOpenvpnUsage = {
+          result: false,
+          restrictions: {
+            OpenvpnInRule: [],
+            OpenvpnInGroup: [],
+            LastOpenvpnInPrefixInRule: [],
+            LastOpenvpnInPrefixInGroup: [],
+            OpenvpnInGroupInRule: [],
+            OpenvpnInPrefixInGroupInRule: [],
+            OpenVPNInRoute: [],
+            OpenVPNInGroupInRoute: [],
+            OpenVPNInRoutingRule: [],
+            OpenVPNInGroupInRoutingRule: [],
+          },
+        };
         /* Verify that the OpenVPN configuration is not used in any
                     - Rule (table policy_r__openvpn)
                     - IPBOJ group.
@@ -712,7 +800,7 @@ export class OpenVPN extends Model {
           // Include the rules that use the groups in which the OpenVPN is being used.
           search.restrictions.OpenvpnInGroupInRule = [];
           for (let i = 0; i < search.restrictions.OpenvpnInGroup.length; i++) {
-            const data: any = await IPObjGroup.searchGroupUsage(
+            const data = await IPObjGroup.searchGroupUsage(
               search.restrictions.OpenvpnInGroup[i].group_id,
               fwcloud,
             );
@@ -725,7 +813,7 @@ export class OpenVPN extends Model {
           search.restrictions.OpenvpnInPrefixInRule = [];
           search.restrictions.OpenvpnInPrefixInGroupInRule = [];
           for (let i = 0; i < prefixes.length; i++) {
-            const data: any = await OpenVPNPrefix.searchPrefixUsage(
+            const data = await OpenVPNPrefix.searchPrefixUsage(
               dbCon,
               fwcloud,
               prefixes[i].id,
@@ -739,7 +827,8 @@ export class OpenVPN extends Model {
         }
 
         for (const key in search.restrictions) {
-          if (search.restrictions[key].length > 0) {
+          const restrictionArray = search.restrictions[key];
+          if (Array.isArray(restrictionArray) && restrictionArray.length > 0) {
             search.result = true;
             break;
           }
@@ -751,7 +840,10 @@ export class OpenVPN extends Model {
     });
   }
 
-  public static async searchOpenVPNInRoute(fwcloud: number, openvpn: number): Promise<any> {
+  public static async searchOpenVPNInRoute(
+    fwcloud: number,
+    openvpn: number,
+  ): Promise<Array<SearchRoute>> {
     return await db
       .getSource()
       .manager.getRepository(Route)
@@ -771,7 +863,10 @@ export class OpenVPN extends Model {
       .getRawMany();
   }
 
-  public static async searchOpenVPNInRoutingRule(fwcloud: number, openvpn: number): Promise<any> {
+  public static async searchOpenVPNInRoutingRule(
+    fwcloud: number,
+    openvpn: number,
+  ): Promise<Array<SearchRoute>> {
     return await db
       .getSource()
       .manager.getRepository(RoutingRule)
@@ -791,7 +886,10 @@ export class OpenVPN extends Model {
       .getRawMany();
   }
 
-  public static async searchOpenVPNInGroupInRoute(fwcloud: number, openvpn: number): Promise<any> {
+  public static async searchOpenVPNInGroupInRoute(
+    fwcloud: number,
+    openvpn: number,
+  ): Promise<Array<SearchRoute>> {
     return await db
       .getSource()
       .manager.getRepository(Route)
@@ -813,7 +911,7 @@ export class OpenVPN extends Model {
   public static async searchOpenVPNInGroupInRoutingRule(
     fwcloud: number,
     openvpn: number,
-  ): Promise<any> {
+  ): Promise<Array<SearchRoute>> {
     return await db
       .getSource()
       .manager.getRepository(RoutingRule)
@@ -840,20 +938,18 @@ export class OpenVPN extends Model {
       req.dbCon.query(sql, async (error: Error, result: Array<{ id: number }>) => {
         if (error) return reject(error);
 
-        const answer: any = {};
-        answer.restrictions = {};
-        answer.restrictions.OpenvpnInRule = [];
-        answer.restrictions.OpenVPNInRoute = [];
-        answer.restrictions.OpenVPNInRoutingRule = [];
-        answer.restrictions.OpenvpnInGroup = [];
-
+        const answer: SearchOpenvpnUsage = {
+          result: false,
+          restrictions: {
+            OpenvpnInRule: [],
+            OpenVPNInRoute: [],
+            OpenVPNInRoutingRule: [],
+            OpenvpnInGroup: [],
+          },
+        };
         try {
           for (const openvpn of result) {
-            const data: any = await this.searchOpenvpnUsage(
-              req.dbCon,
-              req.body.fwcloud,
-              openvpn.id,
-            );
+            const data = await this.searchOpenvpnUsage(req.dbCon, req.body.fwcloud, openvpn.id);
             if (data.result) {
               answer.restrictions.OpenvpnInRule = answer.restrictions.OpenvpnInRule.concat(
                 data.restrictions.OpenvpnInRule,

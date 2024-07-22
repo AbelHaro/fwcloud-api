@@ -362,7 +362,7 @@ export class FirewallController extends Controller {
 
       return ResponseBuilder.buildResponse().status(200).body(data);
     } catch (error) {
-      if (error.message === 'Method not implemented') {
+      if (error instanceof Error && error.message === 'Method not implemented') {
         return ResponseBuilder.buildResponse().status(501);
       }
       throw error;

@@ -43,8 +43,8 @@ module.exports = {
     //'@typescript-eslint/await-thenable': 'off',
     //'no-useless-escape': 'off',
     '@typescript-eslint/restrict-plus-operands': 'off',
-    //'@typescript-eslint/no-base-to-string': 'off', // finished
-    //'@typescript-eslint/restrict-template-expressions': 'off', // finished
+    '@typescript-eslint/no-base-to-string': 'off', // finished
+    '@typescript-eslint/restrict-template-expressions': 'off', // finished
     //'no-empty': 'off', // finished
     //'no-constant-condition': 'off', // finished
     //'no-dupe-else-if': 'off',  // finished

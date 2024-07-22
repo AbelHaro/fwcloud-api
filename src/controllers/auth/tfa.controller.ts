@@ -6,8 +6,8 @@ import { AuthService } from '../../models/user/auth.service';
 import { VerifyTfaDto } from './dtos/verifytfa.dto';
 import { SetupTfaDto } from './dtos/setuptfa.dto';
 
-const speakeasy = require('speakeasy');
-const QRCode = require('qrcode');
+import speakeasy from 'speakeasy';
+import QRCode from 'qrcode';
 
 export class TfaController extends Controller {
   protected authService: AuthService;

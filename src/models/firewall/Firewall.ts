@@ -49,7 +49,7 @@ import { app } from '../../fonaments/abstract-application';
 import * as path from 'path';
 
 const config = require('../../config/config');
-const firewall_Data = require('../../models/data/data_firewall');
+import firewall_Data from '../../models/data/data_firewall';
 import fwcError from '../../utils/error_table';
 
 import { RoutingTable } from '../routing/routing-table/routing-table.model';
@@ -580,7 +580,7 @@ export class Firewall extends Model {
   public static getFirewallCluster(
     iduser: number,
     idcluster: number,
-    callback: (error: Error | null, row: any) => void,
+    callback: (error: Error | null, row: firewall_Data[]) => void,
   ) {
     db.get((error, connection) => {
       if (error) return callback(error, null);
@@ -613,7 +613,9 @@ export class Firewall extends Model {
     });
   }
 
-  private static getfirewallData(row) {
+  private static getfirewallData(
+    row: Firewall & { interface_name: string; ip_name: string; ip: string },
+  ): Promise<firewall_Data> {
     return new Promise((resolve) => {
       const firewall = new firewall_Data(row);
       resolve(firewall);
@@ -623,7 +625,10 @@ export class Firewall extends Model {
   public static getFirewallClusterMaster(
     iduser: number,
     idcluster: number,
-    callback: (error: Error | null, rows: any) => void,
+    callback: (
+      error: Error | null,
+      rows: Array<Firewall & { interface_name: string; ip_name: string; ip: string }> | null,
+    ) => void,
   ) {
     db.get((error, connection) => {
       if (error) callback(error, null);
@@ -642,9 +647,9 @@ export class Firewall extends Model {
           if (error) callback(error, null);
           else {
             try {
-              const firewall_data: any = await Promise.all(
+              const firewall_data = (await Promise.all(
                 rows.map((data) => utilsModel.decryptFirewallData(data)),
-              );
+              )) as Array<Firewall & { interface_name: string; ip_name: string; ip: string }>;
               callback(null, firewall_data);
             } catch (error) {
               return callback(error, null);

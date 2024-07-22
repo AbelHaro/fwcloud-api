@@ -32,6 +32,32 @@ import Query from '../../database/Query';
 import fwcError from '../../utils/error_table';
 import RequestData from '../data/RequestData';
 
+interface SearchMarkUsage {
+  result?: boolean;
+  restrictions?: {
+    MarkInRule?: Array<{
+      rule: number;
+      firewall: number;
+      firewall_id: number;
+      firewall_name: string;
+      obj_id: number;
+      obj_name: string;
+      rule_id: number;
+      rule_type: number;
+      obj_type_id: number;
+      rule_type_name: string;
+      cluster_id: number;
+      cluster_name: string;
+    }>;
+    MarkInRoutingRule?: Array<{
+      firewall_id: number;
+      firewall_name: string;
+      cluster_id: number;
+      cluster_name: string;
+    }>;
+  };
+}
+
 const tableName: string = 'mark';
 
 @Entity(tableName)
@@ -204,9 +230,13 @@ export class Mark extends Model {
   public static searchMarkUsage(dbCon: Query, fwcloud: number, mark: number) {
     return new Promise(async (resolve, reject) => {
       try {
-        const search: any = {};
-        search.result = false;
-        search.restrictions = {};
+        const search: SearchMarkUsage = {
+          result: false,
+          restrictions: {
+            MarkInRule: [],
+            MarkInRoutingRule: [],
+          },
+        };
 
         search.restrictions.MarkInRule = await this.searchMarkInRule(dbCon, fwcloud, mark);
 
@@ -229,7 +259,8 @@ export class Mark extends Model {
           .getRawMany();
 
         for (const key in search.restrictions) {
-          if (search.restrictions[key].length > 0) {
+          const restrictionArray = search.restrictions[key];
+          if (Array.isArray(restrictionArray) && restrictionArray.length > 0) {
             search.result = true;
             break;
           }

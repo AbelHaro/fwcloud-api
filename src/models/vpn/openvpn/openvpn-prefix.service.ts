@@ -71,14 +71,14 @@ export class OpenVPNPrefixService extends Service {
   protected updateAffectedFirewalls(fwcloudId: number, prefixId: number): Promise<void> {
     return new Promise(async (resolve, reject) => {
       try {
-        const search: any = await OpenVPNPrefix.searchPrefixUsage(
+        const search = await OpenVPNPrefix.searchPrefixUsage(
           db.getQuery(),
           fwcloudId,
           prefixId,
           true,
         );
-        const PrefixInRule: any = search.restrictions.PrefixInRule;
-        const PrefixInGroupIpRule: any = search.restrictions.PrefixInGroupInRule;
+        const PrefixInRule = search.restrictions.PrefixInRule;
+        const PrefixInGroupIpRule = search.restrictions.PrefixInGroupInRule;
 
         for (let j = 0; j < PrefixInRule.length; j++)
           await Firewall.updateFirewallStatus(fwcloudId, PrefixInRule[j].firewall_id, '|3');

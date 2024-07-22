@@ -21,7 +21,7 @@
 */
 
 import db from '../../database/database-manager';
-import { PolicyRuleToIPObj } from '../../models/policy/PolicyRuleToIPObj';
+import { PolicyRuleToIPObj, PolicyRuleToIPObjData } from '../../models/policy/PolicyRuleToIPObj';
 import { IPObjGroup } from './IPObjGroup';
 import { InterfaceIPObj } from '../../models/interface/InterfaceIPObj';
 import { IPObjToIPObjGroup } from '../../models/ipobj/IPObjToIPObjGroup';
@@ -54,6 +54,126 @@ import fwcError from '../../utils/error_table';
 import ipobjs_Data from '../data/data_ipobj';
 import { OpenVPN } from '../vpn/openvpn/OpenVPN';
 import RequestData from '../data/RequestData';
+import { PolicyRule } from '../policy/PolicyRule';
+
+interface SearchIpobjUsage {
+  result?: boolean;
+  restrictions?: {
+    IpobjInRule?: Array<PolicyRuleToIPObjData>;
+    IpobjInGroup?: Array<{
+      obj_id: number;
+      obj_name: string;
+      obj_type_id: number;
+      obj_type_name: string;
+      cloud_id: number;
+      cloud_name: string;
+      group_id: number;
+      group_name: string;
+      group_type: string;
+    }>;
+    IpobjInGroupInRule?: Array<PolicyRuleToIPObjData>;
+    IpobjInOpenVPN?: Array<
+      OpenVPN & {
+        cloud_id: number;
+        cloud_name: string;
+        firewall_id: number;
+        firewall_name: string;
+        cluster_id: number;
+        cluster_name: string;
+      }
+    >;
+    IpobjInRoute?: Array<SearchRoute & { ipobj_id: number; ipobj_type: number }>;
+    IpobjInRouteAsGateway?: Array<SearchRoute & { gateway_id: number; gateway_type: number }>;
+    IpobjInGroupInRoute?: Array<SearchRoute>;
+    IpobjInRoutingRule?: Array<SearchRoute>;
+    IpobjInGroupInRoutingRule?: Array<SearchRoute>;
+    IpobjInDhcpRule?: Array<
+      {
+        network_id: number;
+        network_name: string;
+        range_id: number;
+        range_name: string;
+        router_id: number;
+        router_name: string;
+        dhcp_range: number;
+        dhcp_router: number;
+      } & SearchRoute
+    >;
+    IpobjInKeepalivedRule?: Array<SearchRoute>;
+    IPObjInHAProxyRule?: Array<
+      {
+        frontendIp_id: number;
+        frontendIp_name: string;
+        frontendPort_id: number;
+        frontendPort_name: string;
+      } & SearchRoute
+    >;
+    InterfaceHostInRule?: Array<PolicyRuleToIPObjData>;
+    AddrHostInRule?: Array<PolicyRuleToIPObjData>;
+    AddrHostInGroup?: Array<{
+      obj_id: number;
+      obj_name: string;
+      obj_type_id: number;
+      obj_type_name: string;
+      cloud_id: number;
+      cloud_name: string;
+      group_id: number;
+      group_name: string;
+      group_type: string;
+    }>;
+    AddrHostInOpenvpn?: Array<
+      OpenVPN & {
+        id: number;
+        cloud_id: number;
+        cloud_name: string;
+        firewall_id: number;
+        firewall_name: string;
+        cluster_id: number;
+        cluster_name: string;
+      }
+    >;
+    InterfaceHostInDhcpRule?: Array<
+      {
+        dhcp_rule_id: number;
+        dhcp_rule_type: number;
+        interface_id: number;
+        interface_name: string;
+      } & SearchRoute
+    >;
+    InterfaceHostInKeepalivedRule?: Array<KeepalivedRule>;
+    InterfaceHostInHAProxyRule?: Array<{
+      haproxy_rule_id: number;
+      haproxy_rule_type: number;
+      haproxy_rule_order: number;
+      haproxy_rule_active: number;
+      haproxy_rule_style: number;
+      haproxy_rule_cfg_text: string;
+      haproxy_rule_comment: string;
+      firewall_id: number;
+      firewall_name: string;
+      frontend_ip_id: number;
+      frontend_ip_name: string;
+      frontend_port_id: number;
+      frontend_port_name: string;
+      backend_port_id: number;
+      backend_port_name: string;
+    }>;
+    LastAddrInInterfaceInRule?: Array<PolicyRuleToIPObjData>;
+    LastAddrInHostInRule?: Array<PolicyRuleToIPObjData>;
+    LastAddrInGroupHostInRule?: Array<PolicyRule>;
+    LastAddrInHostInRoute?: Array<Route>;
+    LastAddrInHostInRoutingRule?: Array<RoutingRule>;
+    LastAddrInGroupHostInRoute?: Array<Route>;
+    LastAddrInGroupHostInRoutingRule?: Array<RoutingRule>;
+  };
+}
+
+interface SearchRoute {
+  firewall_id: number;
+  firewall_name: string;
+  cluster_id: number;
+  cluster_name: string;
+}
 
 const tableName: string = 'ipobj';
 
@@ -1168,7 +1288,7 @@ export class IPObj extends Model {
   public static searchIpobjUsage(dbCon: Query, fwcloud: number, id: number, type: number) {
     return new Promise(async (resolve, reject) => {
       try {
-        const search: any = {};
+        const search: SearchIpobjUsage = {};
         search.result = false;
         search.restrictions = {};
         search.restrictions.IpobjInRule = await PolicyRuleToIPObj.searchIpobjInRule(
@@ -1260,12 +1380,12 @@ export class IPObj extends Model {
         }
 
         for (const key in search.restrictions) {
-          if (search.restrictions[key].length > 0) {
+          const restrictionArray = search.restrictions[key];
+          if (Array.isArray(restrictionArray) && restrictionArray.length > 0) {
             search.result = true;
             break;
           }
         }
-
         resolve(search);
       } catch (error) {
         reject(error);
@@ -1273,7 +1393,10 @@ export class IPObj extends Model {
     });
   }
 
-  public static async searchIpobjInRoute(ipobj: number, fwcloud: number): Promise<any> {
+  public static async searchIpobjInRoute(
+    ipobj: number,
+    fwcloud: number,
+  ): Promise<Array<SearchRoute & { ipobj_id: number; ipobj_type: number }>> {
     return await db
       .getSource()
       .manager.getRepository(Route)
@@ -1295,7 +1418,10 @@ export class IPObj extends Model {
       .getRawMany();
   }
 
-  public static async searchIpobjInRouteAsGateway(ipobj: number, fwcloud: number): Promise<any> {
+  public static async searchIpobjInRouteAsGateway(
+    ipobj: number,
+    fwcloud: number,
+  ): Promise<Array<SearchRoute & { gateway_id: number; gateway_type: number }>> {
     return await db
       .getSource()
       .manager.getRepository(Route)
@@ -1316,7 +1442,10 @@ export class IPObj extends Model {
       .getRawMany();
   }
 
-  public static async searchIpobjInRoutingRule(ipobj: number, fwcloud: number): Promise<any> {
+  public static async searchIpobjInRoutingRule(
+    ipobj: number,
+    fwcloud: number,
+  ): Promise<Array<SearchRoute>> {
     return await db
       .getSource()
       .manager.getRepository(RoutingRule)
@@ -1336,7 +1465,23 @@ export class IPObj extends Model {
       .getRawMany();
   }
 
-  public static async searchIPObjInDhcpRule(IPObj: number, FWCloud: number): Promise<any> {
+  public static async searchIPObjInDhcpRule(
+    IPObj: number,
+    FWCloud: number,
+  ): Promise<
+    Array<
+      {
+        network_id: number;
+        network_name: string;
+        range_id: number;
+        range_name: string;
+        router_id: number;
+        router_name: string;
+        dhcp_range: number;
+        dhcp_router: number;
+      } & SearchRoute
+    >
+  > {
     const resultAsRouter = await db
       .getSource()
       .manager.getRepository(DHCPRule)
@@ -1399,7 +1544,10 @@ export class IPObj extends Model {
     );
   }
 
-  public static async searchIpobjInKeepalivedRule(id: number, fwcloud: number): Promise<any> {
+  public static async searchIpobjInKeepalivedRule(
+    id: number,
+    fwcloud: number,
+  ): Promise<Array<SearchRoute>> {
     return await db
       .getSource()
       .manager.getRepository(KeepalivedRule)
@@ -1418,7 +1566,19 @@ export class IPObj extends Model {
       .getRawMany();
   }
 
-  public static async searchIPObjInHAProxyRule(id: number, fwcloud: number): Promise<any> {
+  public static async searchIPObjInHAProxyRule(
+    id: number,
+    fwcloud: number,
+  ): Promise<
+    Array<
+      {
+        frontendIp_id: number;
+        frontendIp_name: string;
+        frontendPort_id: number;
+        frontendPort_name: string;
+      } & SearchRoute
+    >
+  > {
     const resultAsFrontendIpAndPort = await db
       .getSource()
       .manager.getRepository(HAProxyRule)
@@ -1469,7 +1629,10 @@ export class IPObj extends Model {
     );
   }
 
-  public static async searchIpobjInGroupInRoute(ipobj: number, fwcloud: number): Promise<any> {
+  public static async searchIpobjInGroupInRoute(
+    ipobj: number,
+    fwcloud: number,
+  ): Promise<Array<SearchRoute>> {
     return await db
       .getSource()
       .manager.getRepository(Route)
@@ -1496,7 +1659,7 @@ export class IPObj extends Model {
   public static async searchIpobjInGroupInRoutingRule(
     ipobj: number,
     fwcloud: number,
-  ): Promise<any> {
+  ): Promise<Array<SearchRoute>> {
     return await db
       .getSource()
       .manager.getRepository(RoutingRule)
@@ -1709,7 +1872,16 @@ export class IPObj extends Model {
     dbCon: Query,
     fwcloud: number,
     id: number,
-  ): Promise<any> {
+  ): Promise<
+    Array<
+      {
+        dhcp_rule_id: number;
+        dhcp_rule_type: number;
+        interface_id: number;
+        interface_name: string;
+      } & SearchRoute
+    >
+  > {
     return await db
       .getSource()
       .manager.getRepository(DHCPRule)
@@ -1738,7 +1910,7 @@ export class IPObj extends Model {
     dbCon: Query,
     fwcloid: number,
     id: number,
-  ) {
+  ): Promise<Array<KeepalivedRule>> {
     return await db
       .getSource()
       .manager.getRepository(KeepalivedRule)
@@ -1758,7 +1930,25 @@ export class IPObj extends Model {
     dbCon: Query,
     fwcloud: number,
     ipObjId: number,
-  ): Promise<any> {
+  ): Promise<
+    Array<{
+      haproxy_rule_id: number;
+      haproxy_rule_type: number;
+      haproxy_rule_order: number;
+      haproxy_rule_active: number;
+      haproxy_rule_style: number;
+      haproxy_rule_cfg_text: string;
+      haproxy_rule_comment: string;
+      firewall_id: number;
+      firewall_name: string;
+      frontend_ip_id: number;
+      frontend_ip_name: string;
+      frontend_port_id: number;
+      frontend_port_name: string;
+      backend_port_id: number;
+      backend_port_name: string;
+    }>
+  > {
     return await db
       .getSource()
       .manager.getRepository(HAProxyRule)
