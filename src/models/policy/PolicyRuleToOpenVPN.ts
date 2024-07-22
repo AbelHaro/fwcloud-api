@@ -26,6 +26,7 @@ import { PolicyPosition } from './PolicyPosition';
 import { OpenVPN } from '../vpn/openvpn/OpenVPN';
 import { PolicyRule } from './PolicyRule';
 import Query from '../../database/Query';
+import RequestData from '../data/RequestData';
 
 const tableName: string = 'policy_r__openvpn';
 
@@ -78,7 +79,7 @@ export class PolicyRuleToOpenVPN extends Model {
   }
 
   //Add new policy_r__openvpn
-  public static insertInRule(req): Promise<number> {
+  public static insertInRule(req: RequestData): Promise<number> {
     return new Promise(async (resolve, reject) => {
       const policyOpenvpn = {
         rule: req.body.rule,
@@ -125,7 +126,7 @@ export class PolicyRuleToOpenVPN extends Model {
     });
   }
 
-  public static moveToNewPosition(req): Promise<void> {
+  public static moveToNewPosition(req: RequestData): Promise<void> {
     return new Promise((resolve, reject) => {
       const sql = `UPDATE ${tableName} SET rule=${req.body.new_rule}, position=${req.body.new_position}
                 WHERE rule=${req.body.rule} AND openvpn=${req.body.openvpn} AND position=${req.body.position}`;
@@ -136,7 +137,7 @@ export class PolicyRuleToOpenVPN extends Model {
     });
   }
 
-  public static deleteFromRulePosition(req): Promise<void> {
+  public static deleteFromRulePosition(req: RequestData): Promise<void> {
     return new Promise(async (resolve, reject) => {
       const sql = `DELETE FROM ${tableName} WHERE rule=${req.body.rule} AND openvpn=${req.body.openvpn} AND position=${req.body.position}`;
       req.dbCon.query(sql, async (error) => {

@@ -30,6 +30,7 @@ import db from '../../database/database-manager';
 import Query from '../../database/Query';
 
 import fwcError from '../../utils/error_table';
+import RequestData from '../data/RequestData';
 
 const tableName: string = 'mark';
 
@@ -92,7 +93,7 @@ export class Mark extends Model {
   }
 
   // Add new iptables mark for the indicated fwcloud.
-  public static createMark(req): Promise<number> {
+  public static createMark(req: RequestData): Promise<number> {
     return new Promise((resolve, reject) => {
       const markData = {
         fwcloud: req.body.fwcloud,
@@ -112,7 +113,7 @@ export class Mark extends Model {
   }
 
   // Modify an iptables mark.
-  public static modifyMark(req): Promise<void> {
+  public static modifyMark(req: RequestData): Promise<void> {
     return new Promise((resolve, reject) => {
       const sql = `UPDATE ${tableName} SET code=${req.body.code}, name=${req.dbCon.escape(req.body.name)},
 	  comment=${req.dbCon.escape(req.body.comment)} WHERE id=${req.body.mark}`;

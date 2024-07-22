@@ -35,6 +35,7 @@ import { object } from 'joi';
 const asyncMod = require('async');
 import fwcError from '../../utils/error_table';
 import { Func } from 'mocha';
+import RequestData from '../data/RequestData';
 
 const tableModel: string = 'policy_r__ipobj';
 
@@ -147,7 +148,10 @@ export class PolicyRuleToIPObj extends Model {
   }
 
   //Get All policy_r__ipobj by Policy_r (rule) and position
-  public static getRuleIPObjsByPosition(rule: number, position: number) {
+  public static getRuleIPObjsByPosition(
+    rule: number,
+    position: number,
+  ): Promise<Array<PolicyRuleToIPObj>> {
     return new Promise((resolve, reject) => {
       db.get((error, connection) => {
         if (error) return reject(error);
@@ -156,7 +160,7 @@ export class PolicyRuleToIPObj extends Model {
                     WHERE rule=${connection.escape(rule).toString()} AND position=${connection.escape(position).toString()}
                     ORDER BY position_order`;
 
-        connection.query(sql, (error, rows) => {
+        connection.query(sql, (error, rows: Array<PolicyRuleToIPObj>) => {
           if (error) return reject(error);
           resolve(rows);
         });
@@ -397,7 +401,7 @@ export class PolicyRuleToIPObj extends Model {
   };
 
   // Verify that the object we are moving to the rule is not an empty object container.
-  public static emptyIpobjContainerToObjectPosition(req): Promise<boolean> {
+  public static emptyIpobjContainerToObjectPosition(req: RequestData): Promise<boolean> {
     return new Promise((resolve, reject) => {
       // First we need the object type and the content type of the rule position.
       const sql = `select content,
@@ -543,20 +547,20 @@ export class PolicyRuleToIPObj extends Model {
             ' AND I.firewall= ' +
             newfirewall;
           logger().debug('--------- >>>> SQL IPOBJ OTHER: ', sqlI);
-          connection.query(sqlI, (error, result) => {
+          connection.query(sqlI, (error, result: Array<{ id: number }>) => {
             if (result && result.length > 0) {
               p_ipobjData.ipobj = result[0].id;
-              this.cloneInsertPolicy_r__ipobj(p_ipobjData).then((resp: any) => {
+              this.cloneInsertPolicy_r__ipobj(p_ipobjData).then((resp) => {
                 resolve({ result: resp.result });
               });
             } else {
-              this.cloneInsertPolicy_r__ipobj(p_ipobjData).then((resp: any) => {
+              this.cloneInsertPolicy_r__ipobj(p_ipobjData).then((resp) => {
                 resolve({ result: resp.result });
               });
             }
           });
         } else {
-          this.cloneInsertPolicy_r__ipobj(p_ipobjData).then((resp: any) => {
+          this.cloneInsertPolicy_r__ipobj(p_ipobjData).then((resp) => {
             resolve({ result: resp.result });
           });
         }
@@ -564,14 +568,16 @@ export class PolicyRuleToIPObj extends Model {
     });
   }
 
-  public static cloneInsertPolicy_r__ipobj(p_ipobjData) {
+  public static cloneInsertPolicy_r__ipobj(
+    p_ipobjData,
+  ): Promise<{ result: boolean; allowed?: number }> {
     return new Promise((resolve, reject) => {
       db.get((error, connection) => {
         if (error) reject(error);
         connection.query(
           'INSERT INTO ' + tableModel + ' SET ?',
           p_ipobjData,
-          async (error, result) => {
+          async (error, result: { affectedRows: number }) => {
             if (error) {
               logger().debug(error);
               resolve({ result: false, allowed: 1 });
@@ -671,7 +677,7 @@ export class PolicyRuleToIPObj extends Model {
                 connection.escape(position) +
                 ' AND interface=' +
                 connection.escape(_interface);
-              connection.query(sql, async (error, result) => {
+              connection.query(sql, async (error, result: { affectedRows: number }) => {
                 if (error) {
                   callback(error, null);
                 } else {
@@ -751,7 +757,7 @@ export class PolicyRuleToIPObj extends Model {
         connection.escape(position) +
         ' AND interface=' +
         connection.escape(_interface);
-      connection.query(sql, async (error, result) => {
+      connection.query(sql, async (error, result: { affectedRows: number }) => {
         if (error) {
           callback(error, null);
         } else {
@@ -799,7 +805,7 @@ export class PolicyRuleToIPObj extends Model {
                     WHERE rule=${dbCon.escape(rule)} AND ipobj=${dbCon.escape(ipobj)}
                     AND ipobj_g=${dbCon.escape(ipobj_g)} AND position=${dbCon.escape(position)}
                     AND interface=${dbCon.escape(_interface)}`;
-        dbCon.query(sql, async (error, result) => {
+        dbCon.query(sql, async (error, result: { affectedRows: number }) => {
           if (error) return reject(error);
 
           if (result.affectedRows > 0) {
@@ -2046,7 +2052,7 @@ export class PolicyRuleToIPObj extends Model {
     });
   };
 
-  public static checkIpVersion(req) {
+  public static checkIpVersion(req: RequestData) {
     return new Promise(async (resolve, reject) => {
       let rule_ip_version: number;
       try {

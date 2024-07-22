@@ -71,6 +71,7 @@ import { KeepalivedGroup } from '../system/keepalived/keepalived_g/keepalived_g.
 import { KeepalivedRule } from '../system/keepalived/keepalived_r/keepalived_r.model';
 import Query from '../../database/Query';
 import firewalls_Data from '../data/data_firewall';
+import RequestData from '../data/RequestData';
 
 const tableName: string = 'firewall';
 
@@ -379,7 +380,7 @@ export class Firewall extends Model {
    * @param {Function} callback    Function callback response
    *
    */
-  public static getFirewall(req) {
+  public static getFirewall(req: RequestData) {
     return new Promise((resolve, reject) => {
       const sql = `SELECT T.*, I.name as interface_name, O.name as ip_name, O.address as ip, M.id as id_fwmaster
 				FROM ${tableName} T
@@ -437,7 +438,7 @@ export class Firewall extends Model {
    *           updated_at	datetime
    *           by_user	int(11)
    */
-  public static getFirewallCloud(req) {
+  public static getFirewallCloud(req: RequestData) {
     return new Promise((resolve, reject) => {
       const sql = `SELECT T.*, I.name as interface_name, O.name as ip_name, O.address as ip
 			FROM ${tableName} T INNER JOIN user__fwcloud U ON T.fwcloud=U.fwcloud AND U.user=${req.session.user_id}
@@ -484,7 +485,7 @@ export class Firewall extends Model {
    *           updated_at	datetime
    *           by_user	int(11)
    */
-  public static getFirewallSSH(req) {
+  public static getFirewallSSH(req: RequestData) {
     return new Promise(async (resolve, reject) => {
       try {
         const data: any = await this.getFirewall(req);
@@ -579,7 +580,7 @@ export class Firewall extends Model {
   public static getFirewallCluster(
     iduser: number,
     idcluster: number,
-    callback: (error: Error | null, rows: any) => void,
+    callback: (error: Error | null, row: any) => void,
   ) {
     db.get((error, connection) => {
       if (error) return callback(error, null);
@@ -1603,7 +1604,7 @@ export class Firewall extends Model {
     });
   }
 
-  public static getMasterFirewallId = (fwcloud, cluster) => {
+  public static getMasterFirewallId = (fwcloud: number, cluster: number): Promise<number> => {
     return new Promise((resolve, reject) => {
       db.get((error, connection) => {
         if (error) return reject(error);
@@ -1625,7 +1626,7 @@ export class Firewall extends Model {
     });
   };
 
-  public static searchFirewallRestrictions = (req) => {
+  public static searchFirewallRestrictions = (req: RequestData) => {
     return new Promise(async (resolve, reject) => {
       try {
         const search: any = {};

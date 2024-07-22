@@ -41,6 +41,7 @@ import Query from '../../database/Query';
 import interfaces_Data from '../data/data_interface';
 import data_policy_position_ipobjs from '../../models/data/data_policy_position_ipobjs';
 import { Err } from 'joi';
+import RequestData from '../data/RequestData';
 
 const tableName: string = 'interface';
 
@@ -121,7 +122,7 @@ export class Interface extends Model {
     dbCon: Query,
     fwcloud: number,
     firewall: number,
-  ): Promise<Array<any>> {
+  ): Promise<Array<Interface>> {
     return new Promise((resolve, reject) => {
       const sql = `select I.* from ${tableName} I
 				inner join firewall F on F.id=I.firewall
@@ -460,7 +461,7 @@ export class Interface extends Model {
   }
 
   /* Search where is in RULES ALL interfaces from OTHER FIREWALL  */
-  public static searchInterfaceUsageOutOfThisFirewall(req) {
+  public static searchInterfaceUsageOutOfThisFirewall(req: RequestData) {
     return new Promise(async (resolve, reject) => {
       const answer: any = {};
       answer.restrictions = {};
@@ -785,7 +786,7 @@ export class Interface extends Model {
   }
 
   public static createLoInterface(
-    dbCon: any,
+    dbCon: Query,
     fwcloud: number,
     firewall: number,
   ): Promise<{
@@ -985,7 +986,9 @@ export class Interface extends Model {
     fwcloud: number,
     idfirewall: number,
     idNewfirewall: number,
-  ) {
+  ): Promise<
+    Array<{ id_org: number; id_clon: number; addr: Array<{ id_org: number; id_clon: number }> }>
+  > {
     return new Promise((resolve, reject) => {
       db.get((error, connection) => {
         if (error) return reject(error);
@@ -1021,7 +1024,11 @@ export class Interface extends Model {
 
   public static cloneInterface(
     rowData: Interface & { newfirewall: number; org_name: string; clon_name: string },
-  ) {
+  ): Promise<{
+    id_org: number;
+    id_clon: number;
+    addr: Array<{ id_org: number; id_clon: number }>;
+  }> {
     return new Promise((resolve, reject) => {
       db.get(async (error, dbCon) => {
         if (error) return reject(error);

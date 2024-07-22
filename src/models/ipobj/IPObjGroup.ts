@@ -45,11 +45,12 @@ import { RouteToIPObjGroup } from '../routing/route/route-to-ipobj-group.model';
 import { RoutingRuleToIPObjGroup } from '../routing/routing-rule/routing-rule-to-ipobj-group.model';
 import Query from '../../database/Query';
 import { number } from 'joi';
-const asyncMod = require('async');
+import asyncMod from 'async';
 import ipobj_g_Data from '../data/data_ipobj_g';
 const ipobj_Data = require('../data/data_ipobj');
 
 import fwcError from '../../utils/error_table';
+import RequestData from '../data/RequestData';
 
 const tableName: string = 'ipobj_g';
 
@@ -376,7 +377,7 @@ export class IPObjGroup extends Model {
                               '  Name:' +
                               data_ipobj.name +
                               '  Type:' +
-                              data_ipobj.type,
+                              data_ipobj.ipObjTypeId,
                           );
 
                           const ipobj_node = new ipobj_Data(data_ipobj);
@@ -502,7 +503,7 @@ export class IPObjGroup extends Model {
   }
 
   //Update ipobj_g
-  public static updateIpobj_g(req, ipobj_gData: IPObjGroup): Promise<void> {
+  public static updateIpobj_g(req: RequestData, ipobj_gData: IPObjGroup): Promise<void> {
     return new Promise((resolve, reject) => {
       const sql = `UPDATE ${tableName} SET name=${req.dbCon.escape(ipobj_gData.name)}
             ,type=${ipobj_gData.type}

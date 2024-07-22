@@ -25,7 +25,7 @@ import { EventEmitter } from 'typeorm/platform/PlatformTools';
 import { ProgressSSHCmdPayload } from '../sockets/messages/socket-message';
 import { Client } from 'ssh2';
 export default class sshTools {
-  public static uploadFile(SSHconn, srcFile: string, dstFile) {
+  public static uploadFile(SSHconn, srcFile: string, dstFile: string) {
     const conn = new Client();
 
     logger().debug('SSH Upload File: ', srcFile, dstFile);
@@ -49,7 +49,7 @@ export default class sshTools {
             writeStream
               .on('close', () => resolve('File transferred succesfully'))
               .on('end', () => {
-                conn.close();
+                conn.end();
                 reject('sftp connection closed');
               });
 
@@ -66,7 +66,6 @@ export default class sshTools {
   }
 
   public static uploadStringToFile(SSHconn, str: string, dstFile: string) {
-    const Client = require('ssh2').Client;
     const conn = new Client();
 
     return new Promise((resolve, reject) => {
@@ -83,7 +82,7 @@ export default class sshTools {
             writeStream
               .on('close', () => resolve('File transferred succesfully'))
               .on('end', () => {
-                conn.close();
+                conn.end();
                 reject('sftp connection closed');
               });
 
@@ -101,8 +100,7 @@ export default class sshTools {
     });
   }
 
-  public static runCommand(SSHconn, cmd, eventEmitter?: EventEmitter): Promise<string> {
-    const Client = require('ssh2').Client;
+  public static runCommand(SSHconn, cmd: string, eventEmitter?: EventEmitter): Promise<string> {
     const conn = new Client();
     let stdout_log = '';
     let stderr_log = '';

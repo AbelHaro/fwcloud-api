@@ -44,6 +44,7 @@ import db from '../../../database/database-manager';
 import Query from '../../../database/Query';
 import fwcError from '../../../utils/error_table';
 import { OpenVPNPrefixToIPObjGroupExporter } from '../../../fwcloud-exporter/database-exporter/exporters/openvpn-prefix-to-ipobj-group.exporter';
+import RequestData from '../../data/RequestData';
 
 const tableName: string = 'openvpn_prefix';
 
@@ -106,22 +107,26 @@ export class OpenVPNPrefix extends Model {
   }
 
   // Add new prefix container.
-  public static createPrefix(req) {
+  public static createPrefix(req: RequestData): Promise<number> {
     return new Promise((resolve, reject) => {
       const prefixData = {
         id: null,
         name: req.body.name,
         openvpn: req.body.openvpn,
       };
-      req.dbCon.query(`INSERT INTO ${tableName} SET ?`, prefixData, (error: Error, result) => {
-        if (error) return reject(error);
-        resolve(result.insertId);
-      });
+      req.dbCon.query(
+        `INSERT INTO ${tableName} SET ?`,
+        prefixData,
+        (error: Error, result: { insertId: number }) => {
+          if (error) return reject(error);
+          resolve(result.insertId);
+        },
+      );
     });
   }
 
   // Modify a CRT Prefix container.
-  public static modifyPrefix(req): Promise<void> {
+  public static modifyPrefix(req: RequestData): Promise<void> {
     return new Promise((resolve, reject) => {
       req.dbCon.query(
         `UPDATE ${tableName} SET name=${req.dbCon.escape(req.body.name)} WHERE id=${req.body.prefix}`,
@@ -400,7 +405,7 @@ export class OpenVPNPrefix extends Model {
     });
   }
 
-  public static removePrefixFromGroup(req) {
+  public static removePrefixFromGroup(req: RequestData) {
     return new Promise((resolve, reject) => {
       const sql = `DELETE FROM openvpn_prefix__ipobj_g WHERE prefix=${req.body.ipobj} AND ipobj_g=${req.body.ipobj_g}`;
       req.dbCon.query(sql, (error, result: { insertId: number }) => {
@@ -617,7 +622,7 @@ export class OpenVPNPrefix extends Model {
       .getRawMany();
   }
 
-  public static searchPrefixUsageOutOfThisFirewall(req) {
+  public static searchPrefixUsageOutOfThisFirewall(req: RequestData) {
     return new Promise((resolve, reject) => {
       // First get all firewalls prefixes for OpenVPN configurations.
       const sql = `select P.id from ${tableName} P

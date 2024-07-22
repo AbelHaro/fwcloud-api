@@ -44,8 +44,8 @@ import { KeepalivedRule } from '../system/keepalived/keepalived_r/keepalived_r.m
 import { HAProxyRule } from '../system/haproxy/haproxy_r/haproxy_r.model';
 import Query from '../../database/Query';
 
-const ip = require('ip');
-const asyncMod = require('async');
+import ip from 'ip';
+import asyncMod from 'async';
 import host_Data from '../../models/data/data_ipobj_host';
 import interface_Data from '../../models/data/data_interface';
 const ipobj_Data = require('../../models/data/data_ipobj');
@@ -53,6 +53,7 @@ const data_policy_position_ipobjs = require('../../models/data/data_policy_posit
 import fwcError from '../../utils/error_table';
 import ipobjs_Data from '../data/data_ipobj';
 import { OpenVPN } from '../vpn/openvpn/OpenVPN';
+import RequestData from '../data/RequestData';
 
 const tableName: string = 'ipobj';
 
@@ -504,9 +505,7 @@ export class IPObj extends Model {
                                       '--> DENTRO de OBJECT id:' +
                                         data_ipobj.id +
                                         '  Name:' +
-                                        data_ipobj.name +
-                                        '  Type:' +
-                                        data_ipobj.type,
+                                        data_ipobj.name,
                                     );
 
                                     const ipobj_node = new ipobj_Data(data_ipobj);
@@ -750,7 +749,7 @@ export class IPObj extends Model {
    * #### JSON RESPONSE ERROR:
    *      {result: false, "insertId": ''}
    * */
-  public static insertIpobj(dbCon: Query, ipobjData): Promise<number> {
+  public static insertIpobj(dbCon: Query, ipobjData: any): Promise<number> {
     return new Promise<number>((resolve, reject) => {
       // The IDs for the user defined IP Objects begin from the value 100000.
       // IDs values from 0 to 99999 are reserved for standard IP Objects.
@@ -775,7 +774,7 @@ export class IPObj extends Model {
 
   public static cloneIpobj(
     ipobjDataclone: IPObj & { newinterface: number; org_name: string; clon_name: string },
-  ): Promise<{ id_org: any; id_clon: number }> {
+  ): Promise<{ id_org: number; id_clon: number }> {
     return new Promise((resolve, reject) => {
       db.get((error, connection) => {
         if (error) return reject(error);
@@ -831,7 +830,7 @@ export class IPObj extends Model {
    * #### JSON RESPONSE ERROR:
    *      {result: false}
    * */
-  public static updateIpobj(req, ipobjData: ipobjs_Data): Promise<void> {
+  public static updateIpobj(req: RequestData, ipobjData: ipobjs_Data): Promise<void> {
     return new Promise((resolve, reject) => {
       const sql =
         'UPDATE ' +
@@ -1924,7 +1923,7 @@ export class IPObj extends Model {
           // We have two formats for the netmask (for example, 255.255.255.0 or /24).
           // We have to check if the object already exist independently of the netmask format.
           const net1 = ip.cidrSubnet(`${addr}/${mask}`);
-          let net2: any = {};
+          let net2: ip.SubnetInfo;
           for (const row of rows) {
             net2 =
               row.netmask[0] === '/'
@@ -2013,7 +2012,7 @@ export class IPObj extends Model {
       if (tcpFlags)
         sql = `${sql} AND tcp_flags_mask=${tcpFlags} AND tcp_flags_settings=${tcpFlagsSet}`;
 
-      dbCon.query(sql, (error, rows) => {
+      dbCon.query(sql, (error, rows: Array<{ id: number }>) => {
         if (error) return reject(error);
 
         resolve(rows.length === 0 ? 0 : rows[0].id);
